@@ -19,6 +19,7 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 
 @SuppressLint("NewApi")
+@SuppressWarnings("deprecation")
 public class Slider extends LinearLayout implements OnClickListener, OnTouchListener, AnimationListener {
     private boolean minimizeOnCreate = true;
 
@@ -31,7 +32,6 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     private int height;
     private int multiplier = 1;
     private int barHeight = 62;
-    private RelativeLayout.LayoutParams params;
     public Slider(Context context) {
         super(context);
         setupView(context, null);
@@ -52,7 +52,6 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         super.onSizeChanged(w, h, oldw, oldh);
         if(minimizeOnCreate) {
             height = getHeight();
-            params = new RelativeLayout.LayoutParams(getWidth(), getHeight());
             body.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, getHeight()-barHeight));
             minimizeSlider();
             minimizeOnCreate = !minimizeOnCreate;
@@ -68,12 +67,22 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
             int[] attrsArray = new int[] { android.R.attr.scrollbarThumbHorizontal };
             TypedArray ta = context.obtainStyledAttributes(attrs, attrsArray);
             Drawable background = ta.getDrawable(0);
-            slider.setBackground(background);
+            if(android.os.Build.VERSION.SDK_INT < 16) {
+                slider.setBackgroundDrawable(background);
+            }
+            else {
+                slider.setBackground(background);
+            }
         }
         slider.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         slider.setOnTouchListener(this);
         body = new LinearLayout(context);
-        body.setBackground(getBackground());
+        if(android.os.Build.VERSION.SDK_INT < 16) {
+            body.setBackgroundDrawable(getBackground());
+        }
+        else {
+            body.setBackground(getBackground());
+        }
         body.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
         body.setOnTouchListener(new OnTouchListener() {
             @Override
@@ -92,6 +101,8 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         switch (event.getAction()) {
         case MotionEvent.ACTION_DOWN:
             offset = (int) event.getY();
+            if(slideListener != null && isSliderOpen()) slideListener.onSlide(Direction.DOWN);
+            else if(slideListener != null && !isSliderOpen()) slideListener.onSlide(Direction.UP);
             break;
         case MotionEvent.ACTION_UP:
             if(sliderOpen) {
@@ -132,6 +143,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
 
     private void translate() {
         if(android.os.Build.VERSION.SDK_INT < 11) {
+            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(getWidth(), getHeight());
             params.topMargin = distance;
             setLayoutParams(params);
         } else{
@@ -272,7 +284,12 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     }
 
     public void setBarBackground(Drawable background) {
-        slider.setBackground(background);
+        if(android.os.Build.VERSION.SDK_INT < 16) {
+            slider.setBackgroundDrawable(background);
+        }
+        else {
+            slider.setBackground(background);
+        }
     }
 
     public void setBarBackgroundResource(int background) {
@@ -280,7 +297,12 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     }
 
     public void setBodyBackground(Drawable background) {
-        body.setBackground(background);
+        if(android.os.Build.VERSION.SDK_INT < 16) {
+            body.setBackgroundDrawable(background);
+        }
+        else {
+            body.setBackground(background);
+        }
     }
 
     public void setBodyBackgroundResource(int background) {
