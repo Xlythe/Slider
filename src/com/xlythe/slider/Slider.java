@@ -98,7 +98,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener(){
             @Override
             public void onGlobalLayout(){
-            	if(android.os.Build.VERSION.SDK_INT < 16) {
+                if(android.os.Build.VERSION.SDK_INT < 16) {
                     getViewTreeObserver().removeGlobalOnLayoutListener(this);
                 }
                 else {
