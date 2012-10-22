@@ -5,9 +5,12 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.ViewTreeObserver;
+import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
 import android.view.animation.Animation;
@@ -33,6 +36,8 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     private int height;
     private int multiplier = 1;
     private int barHeight = 62;
+    private GestureDetector mGestureDetector;
+
     public Slider(Context context) {
         super(context);
         setupView(context, null);
@@ -114,10 +119,14 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
                 minimizeSlider();
             }
         });
+        mGestureDetector = new GestureDetector(getContext(), new SliderGestureDetector());
     }
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
+        if(mGestureDetector.onTouchEvent(event)) {
+            return true;
+        }
         switch (event.getAction()) {
         case MotionEvent.ACTION_DOWN:
             offset = (int) event.getY();
@@ -373,5 +382,48 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
 
     public LinearLayout getBody() {
         return body;
+    }
+
+    class SliderGestureDetector extends SimpleOnGestureListener {
+        final int swipeMinDistance;
+        final int swipeThresholdVelocity;
+
+        SliderGestureDetector() {
+            final ViewConfiguration vc = ViewConfiguration.get(getContext());
+            swipeMinDistance = vc.getScaledTouchSlop();
+            swipeThresholdVelocity = vc.getScaledMinimumFlingVelocity();
+        }
+
+        @Override
+        public boolean onDown(MotionEvent e) {
+        	return true;
+        }
+
+        @Override
+        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+            try {
+            	if(multiplier < 0) {
+                    if(Math.abs(e1.getY() - e2.getY()) > swipeMinDistance && velocityY > swipeThresholdVelocity) {
+                        animateSliderClosed();
+                        return true;
+                    }
+                    else if(Math.abs(e1.getY() - e2.getY()) > swipeMinDistance && velocityY < -swipeThresholdVelocity) {
+                    	animateSliderOpen();
+                        return true;
+                    }
+            	}
+            	else {
+            		if(Math.abs(e1.getY() - e2.getY()) > swipeMinDistance && velocityY < -swipeThresholdVelocity) {
+                        animateSliderClosed();
+                        return true;
+                    }
+                    else if(Math.abs(e1.getY() - e2.getY()) > swipeMinDistance && velocityY > swipeThresholdVelocity) {
+                    	animateSliderOpen();
+                        return true;
+                    }
+            	}
+            } catch(Exception e) {}
+            return false;
+        }
     }
 }
