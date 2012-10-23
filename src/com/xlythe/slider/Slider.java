@@ -2,15 +2,14 @@ package com.xlythe.slider;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.view.GestureDetector;
+import android.util.DisplayMetrics;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewConfiguration;
 import android.view.ViewTreeObserver;
-import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
 import android.view.animation.Animation;
@@ -31,12 +30,12 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     private ImageButton slider;
     private LinearLayout body;
     private boolean sliderOpen;
+    private float previousMovement;
     private int distance;
     private int offset;
     private int height;
     private int multiplier = 1;
     private int barHeight = 62;
-    private GestureDetector mGestureDetector;
 
     public Slider(Context context) {
         super(context);
@@ -119,31 +118,27 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
                 minimizeSlider();
             }
         });
-        mGestureDetector = new GestureDetector(getContext(), new SliderGestureDetector());
     }
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-        if(mGestureDetector.onTouchEvent(event)) {
-            return true;
-        }
-        switch (event.getAction()) {
-        case MotionEvent.ACTION_DOWN:
+        if(event.getAction() == MotionEvent.ACTION_DOWN) {
             offset = (int) event.getY();
             if(slideListener != null && isSliderOpen()) slideListener.onSlide(Direction.DOWN);
             else if(slideListener != null && !isSliderOpen()) slideListener.onSlide(Direction.UP);
+        }
+        switch (event.getAction()) {
+        case MotionEvent.ACTION_DOWN:
             break;
         case MotionEvent.ACTION_UP:
-            if(sliderOpen) {
-                if(distance*multiplier < (height-barHeight)/6) {
-                    animateSliderOpen();
-                }
-                else{
-                    animateSliderClosed();
-                }
+            if(previousMovement*multiplier > convertDpToPixel(3)) {
+                animateSliderClosed();
             }
-            else{
-                if(distance*multiplier < 5*(height-barHeight)/6) {
+            else if(previousMovement*multiplier < -convertDpToPixel(3)) {
+                animateSliderOpen();
+            }
+            else {
+                if(distance*multiplier < height/2) {
                     animateSliderOpen();
                 }
                 else{
@@ -152,6 +147,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
             }
             break;
         case MotionEvent.ACTION_MOVE:
+            previousMovement = event.getY()-offset;
             distance += event.getY()-offset;
             if(distance*multiplier < 0) distance = 0;
             if(distance*multiplier > height - barHeight) distance = (height - barHeight)*multiplier;
@@ -384,46 +380,10 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         return body;
     }
 
-    class SliderGestureDetector extends SimpleOnGestureListener {
-        final int swipeMinDistance;
-        final int swipeThresholdVelocity;
-
-        SliderGestureDetector() {
-            final ViewConfiguration vc = ViewConfiguration.get(getContext());
-            swipeMinDistance = vc.getScaledTouchSlop();
-            swipeThresholdVelocity = vc.getScaledMinimumFlingVelocity();
-        }
-
-        @Override
-        public boolean onDown(MotionEvent e) {
-        	return true;
-        }
-
-        @Override
-        public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-            try {
-            	if(multiplier < 0) {
-                    if(Math.abs(e1.getY() - e2.getY()) > swipeMinDistance && velocityY > swipeThresholdVelocity) {
-                        animateSliderClosed();
-                        return true;
-                    }
-                    else if(Math.abs(e1.getY() - e2.getY()) > swipeMinDistance && velocityY < -swipeThresholdVelocity) {
-                    	animateSliderOpen();
-                        return true;
-                    }
-            	}
-            	else {
-            		if(Math.abs(e1.getY() - e2.getY()) > swipeMinDistance && velocityY < -swipeThresholdVelocity) {
-                        animateSliderClosed();
-                        return true;
-                    }
-                    else if(Math.abs(e1.getY() - e2.getY()) > swipeMinDistance && velocityY > swipeThresholdVelocity) {
-                    	animateSliderOpen();
-                        return true;
-                    }
-            	}
-            } catch(Exception e) {}
-            return false;
-        }
+    private float convertDpToPixel(float dp){
+        Resources resources = getContext().getResources();
+        DisplayMetrics metrics = resources.getDisplayMetrics();
+        float px = dp * (metrics.densityDpi/160f);
+        return px;
     }
 }
