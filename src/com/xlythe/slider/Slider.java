@@ -122,13 +122,11 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
 
     @Override
     public boolean onTouch(View v, MotionEvent event) {
-        if(event.getAction() == MotionEvent.ACTION_DOWN) {
+        switch (event.getAction()) {
+        case MotionEvent.ACTION_DOWN:
             offset = (int) event.getY();
             if(slideListener != null && isSliderOpen()) slideListener.onSlide(Direction.DOWN);
             else if(slideListener != null && !isSliderOpen()) slideListener.onSlide(Direction.UP);
-        }
-        switch (event.getAction()) {
-        case MotionEvent.ACTION_DOWN:
             break;
         case MotionEvent.ACTION_UP:
             if(previousMovement*multiplier > convertDpToPixel(3)) {
