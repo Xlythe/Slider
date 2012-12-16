@@ -99,23 +99,19 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         addView(slider);
         addView(body);
 
-        getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener(){
+        getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
-            public void onGlobalLayout(){
-                if(android.os.Build.VERSION.SDK_INT < 16) {
-                    getViewTreeObserver().removeGlobalOnLayoutListener(this);
+            public void onGlobalLayout() {
+                if(height != getHeight()){
+                    height = getHeight();
+                    if(android.os.Build.VERSION.SDK_INT < 8) {
+                        body.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.FILL_PARENT, height-barHeight));
+                    }
+                    else {
+                        body.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, height-barHeight));
+                    }
+                    minimizeSlider();
                 }
-                else {
-                    getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                }
-                height = getHeight();
-                if(android.os.Build.VERSION.SDK_INT < 8) {
-                    body.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.FILL_PARENT, getHeight()-barHeight));
-                }
-                else {
-                    body.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, getHeight()-barHeight));
-                }
-                minimizeSlider();
             }
         });
     }
@@ -159,17 +155,19 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     public void onClick(View v) {
         if(sliderOpen) {
             minimizeSlider();
-        } else {
+        }
+        else {
             maximizeSlider();
         }
     }
 
     private void translate() {
         if(android.os.Build.VERSION.SDK_INT < 11) {
-            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(getWidth(), getHeight());
+            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) getLayoutParams();
             params.topMargin = distance;
             setLayoutParams(params);
-        } else{
+        }
+        else{
             setTranslationY(distance);
         }
     }
