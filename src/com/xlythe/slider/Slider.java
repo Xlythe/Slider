@@ -2,15 +2,15 @@ package com.xlythe.slider;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.util.DisplayMetrics;
 import android.view.MotionEvent;
+import android.view.VelocityTracker;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
+import android.view.ViewConfiguration;
 import android.view.animation.Animation;
 import android.view.animation.Animation.AnimationListener;
 import android.view.animation.AnimationSet;
@@ -23,13 +23,19 @@ import android.widget.RelativeLayout;
 @SuppressLint("NewApi")
 @SuppressWarnings("deprecation")
 public class Slider extends LinearLayout implements OnClickListener, OnTouchListener, AnimationListener {
+    // Cached ViewConfiguration and system-wide constant values
+    private int mSlop;
+    private int mMinFlingVelocity;
+    private int mMaxFlingVelocity;
+    private long mAnimationTime;
+    private VelocityTracker mVelocityTracker;
+
     private OnSlideListener slideListener;
     private OnSlideListener beforeSlideListener;
     private OnSlideListener afterSlideListener;
     private ImageButton slider;
     private LinearLayout body;
     private boolean sliderOpen = false;
-    private float previousMovement;
     private int distance;
     private int offset;
     private int height = -1;
@@ -52,6 +58,12 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     }
 
     private void setupView(Context context, AttributeSet attrs) {
+        ViewConfiguration vc = ViewConfiguration.get(context);
+        mSlop = vc.getScaledTouchSlop();
+        mMinFlingVelocity = vc.getScaledMinimumFlingVelocity();
+        mMaxFlingVelocity = vc.getScaledMaximumFlingVelocity();
+        mAnimationTime = context.getResources().getInteger(android.R.integer.config_mediumAnimTime);
+
         setOrientation(LinearLayout.VERTICAL);
         setScrollContainer(false);
         setHorizontalScrollBarEnabled(false);
@@ -66,6 +78,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
             else {
                 slider.setBackground(background);
             }
+            ta.recycle();
         }
         slider.setOnTouchListener(this);
         body = new LinearLayout(context);
@@ -103,32 +116,51 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     public boolean onTouch(View v, MotionEvent event) {
         switch(event.getAction()) {
         case MotionEvent.ACTION_DOWN:
+            mVelocityTracker = VelocityTracker.obtain();
+            mVelocityTracker.addMovement(event);
+
             offset = (int) event.getY();
             if(slideListener != null && isSliderOpen()) slideListener.onSlide(Direction.DOWN);
             else if(slideListener != null && !isSliderOpen()) slideListener.onSlide(Direction.UP);
             break;
         case MotionEvent.ACTION_UP:
-            if(previousMovement * multiplier > convertDpToPixel(3)) {
-                animateSliderClosed();
+            if(mVelocityTracker == null) {
+                break;
             }
-            else if(previousMovement * multiplier < -convertDpToPixel(3)) {
+
+            mVelocityTracker.addMovement(event);
+            mVelocityTracker.computeCurrentVelocity(1000);
+            float velocityX = Math.abs(mVelocityTracker.getXVelocity());
+            float velocityY = Math.abs(mVelocityTracker.getYVelocity());
+            boolean open = false;
+            if(distance * multiplier < height / 2) {
+                open = true;
+            }
+            if(mMinFlingVelocity <= velocityY && velocityY <= mMaxFlingVelocity && velocityX < velocityY) {
+                open = mVelocityTracker.getYVelocity() * multiplier > 0;
+            }
+            if(open) {
                 animateSliderOpen();
             }
             else {
-                if(distance * multiplier < height / 2) {
-                    animateSliderOpen();
-                }
-                else {
-                    animateSliderClosed();
-                }
+                animateSliderClosed();
             }
+            mVelocityTracker.recycle();
+            mVelocityTracker = null;
             break;
         case MotionEvent.ACTION_MOVE:
-            previousMovement = event.getY() - offset;
+            if(mVelocityTracker == null) {
+                break;
+            }
+
+            mVelocityTracker.addMovement(event);
             distance += event.getY() - offset;
             if(distance * multiplier < 0) distance = 0;
             if(distance * multiplier > height - barHeight) distance = (height - barHeight) * multiplier;
-            translate();
+            if(Math.abs(distance) > mSlop) {
+                translate();
+                return true;
+            }
             break;
         }
         return false;
@@ -137,10 +169,10 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     @Override
     public void onClick(View v) {
         if(sliderOpen) {
-            minimizeSlider();
+            animateSliderClosed();
         }
         else {
-            maximizeSlider();
+            animateSliderOpen();
         }
     }
 
@@ -191,7 +223,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         animationSet.setFillEnabled(true);
 
         TranslateAnimation r = new TranslateAnimation(0, 0, distance, 0);
-        r.setDuration(500);
+        r.setDuration(mAnimationTime);
         r.setFillAfter(false);
         animationSet.addAnimation(r);
 
@@ -208,7 +240,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
             animationSet.setFillEnabled(true);
 
             TranslateAnimation r = new TranslateAnimation(0, 0, distance, (height - barHeight) * multiplier);
-            r.setDuration(500);
+            r.setDuration(mAnimationTime);
             r.setFillAfter(false);
             animationSet.addAnimation(r);
 
@@ -237,7 +269,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
             animationSet.setFillEnabled(true);
 
             TranslateAnimation r = new TranslateAnimation(0, 0, distance - ((height - barHeight) * multiplier), 0);
-            r.setDuration(500);
+            r.setDuration(mAnimationTime);
             r.setFillAfter(true);
             animationSet.addAnimation(r);
 
@@ -359,10 +391,8 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         return body;
     }
 
-    private float convertDpToPixel(float dp) {
-        Resources resources = getContext().getResources();
-        DisplayMetrics metrics = resources.getDisplayMetrics();
-        float px = dp * (metrics.densityDpi / 160f);
-        return px;
+    public void enableClick(boolean enabled) {
+        OnClickListener listener = (enabled) ? this : null;
+        slider.setOnClickListener(listener);
     }
 }
