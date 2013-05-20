@@ -395,4 +395,9 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         OnClickListener listener = (enabled) ? this : null;
         slider.setOnClickListener(listener);
     }
+
+    public void enableTouch(boolean enabled) {
+        OnTouchListener listener = (enabled) ? this : null;
+        slider.setOnTouchListener(listener);
+    }
 }
