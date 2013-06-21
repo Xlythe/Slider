@@ -30,6 +30,8 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     private long mAnimationTime;
     private VelocityTracker mVelocityTracker;
 
+    private float mPreviousEvent;
+
     private OnSlideListener slideListener;
     private OnSlideListener beforeSlideListener;
     private OnSlideListener afterSlideListener;
@@ -88,12 +90,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         else {
             body.setBackground(getBackground());
         }
-        body.setOnTouchListener(new OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                return true;
-            }
-        });
+        body.setOnTouchListener(this);
         setBackgroundResource(android.R.color.transparent);
 
         addView(slider);
@@ -120,6 +117,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
             mVelocityTracker.addMovement(event);
 
             offset = (int) event.getY();
+
             if(slideListener != null && isSliderOpen()) slideListener.onSlide(Direction.DOWN);
             else if(slideListener != null && !isSliderOpen()) slideListener.onSlide(Direction.UP);
             break;
@@ -130,14 +128,13 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
 
             mVelocityTracker.addMovement(event);
             mVelocityTracker.computeCurrentVelocity(1000);
-            float velocityX = Math.abs(mVelocityTracker.getXVelocity());
             float velocityY = Math.abs(mVelocityTracker.getYVelocity());
             boolean open = false;
             if(distance * multiplier < height / 2) {
                 open = true;
             }
-            if(mMinFlingVelocity <= velocityY && velocityY <= mMaxFlingVelocity && velocityX < velocityY) {
-                open = mVelocityTracker.getYVelocity() * multiplier > 0;
+            if(mMinFlingVelocity <= velocityY && velocityY <= mMaxFlingVelocity) {
+                open = mPreviousEvent > event.getY();
             }
             if(open) {
                 animateSliderOpen();
@@ -152,6 +149,8 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
             if(mVelocityTracker == null) {
                 break;
             }
+
+            mPreviousEvent = event.getY();
 
             mVelocityTracker.addMovement(event);
             distance += event.getY() - offset;
