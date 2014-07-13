@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.graphics.drawable.Drawable;
+import android.os.Vibrator;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.VelocityTracker;
@@ -43,6 +44,8 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     private int height = -1;
     private int multiplier = 1;
     private int barHeight = 62;
+    private boolean vibrate = false;
+    private int vibrationStrength = 10;
 
     public Slider(Context context) {
         super(context);
@@ -113,6 +116,8 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     public boolean onTouch(View v, MotionEvent event) {
         switch(event.getAction()) {
         case MotionEvent.ACTION_DOWN:
+            if(vibrate) vibrate();
+
             mVelocityTracker = VelocityTracker.obtain();
             mVelocityTracker.addMovement(event);
 
@@ -129,10 +134,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
             mVelocityTracker.addMovement(event);
             mVelocityTracker.computeCurrentVelocity(1000);
             float velocityY = Math.abs(mVelocityTracker.getYVelocity());
-            boolean open = false;
-            if(distance * multiplier < height / 2) {
-                open = true;
-            }
+            boolean open = (isSliderOpen() && distance * multiplier < height / 8) || (!isSliderOpen() && distance * multiplier > height / 8);
             if(mMinFlingVelocity <= velocityY && velocityY <= mMaxFlingVelocity) {
                 open = mPreviousEvent > event.getY();
             }
@@ -167,6 +169,7 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
 
     @Override
     public void onClick(View v) {
+        if(vibrate) vibrate();
         if(sliderOpen) {
             animateSliderClosed();
         }
@@ -304,7 +307,8 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     }
 
     public enum Direction {
-        UP, DOWN
+        UP,
+        DOWN
     }
 
     public static interface OnSlideListener {
@@ -390,6 +394,12 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
         return body;
     }
 
+    private void vibrate() {
+        Vibrator vi = (Vibrator) getContext().getSystemService(Context.VIBRATOR_SERVICE);
+        if(!vi.hasVibrator()) return;
+        vi.vibrate(vibrationStrength);
+    }
+
     public void enableClick(boolean enabled) {
         OnClickListener listener = (enabled) ? this : null;
         slider.setOnClickListener(listener);
@@ -398,5 +408,10 @@ public class Slider extends LinearLayout implements OnClickListener, OnTouchList
     public void enableTouch(boolean enabled) {
         OnTouchListener listener = (enabled) ? this : null;
         slider.setOnTouchListener(listener);
+    }
+
+    public void enableVibration(boolean enabled, int strength) {
+        vibrate = enabled;
+        vibrationStrength = strength;
     }
 }
