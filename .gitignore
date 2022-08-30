@@ -161,3 +161,8 @@ pip-log.txt
 
 # Mac crap
 .DS_Store
+gradlew.bat
+gradlew
+gradle/*
+.idea/*
+.gradle/*
